@@ -16,8 +16,9 @@ func newTemplatesCmd(d *rootDeps) *cobra.Command {
 			_ = args
 			list := d.services.Templates.List()
 			sort.Strings(list)
+			fmt.Fprintf(d.stdout, "Embedded templates (%d):\n", len(list))
 			for _, t := range list {
-				fmt.Fprintln(d.stdout, t)
+				fmt.Fprintf(d.stdout, "  - %s\n", t)
 			}
 			return nil
 		},

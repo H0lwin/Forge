@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -54,7 +55,27 @@ func AddonFile(addon string) (string, string, error) {
 		return "SENTRY.md", "Sentry setup\n\nSet SENTRY_DSN in .env and initialize SDK in app startup.\n", nil
 	case "pytest":
 		return "pytest.ini", "[pytest]\naddopts = -q\n", nil
+	case "precommit":
+		return ".pre-commit-config.yaml", "repos:\n  - repo: https://github.com/pre-commit/pre-commit-hooks\n    rev: v4.6.0\n    hooks:\n      - id: end-of-file-fixer\n      - id: trailing-whitespace\n", nil
 	default:
 		return "", "", fmt.Errorf("unsupported addon: %s", addon)
+	}
+}
+
+func AddonSupported(framework, addon string) bool {
+	addon = strings.ToLower(addon)
+	framework = strings.ToLower(framework)
+
+	common := []string{"docker", "ci", "sentry", "pytest", "email", "cache", "precommit"}
+	if slices.Contains(common, addon) {
+		return true
+	}
+	switch addon {
+	case "auth":
+		return slices.Contains([]string{"django", "fastapi", "flask", "express", "nestjs"}, framework)
+	case "celery":
+		return slices.Contains([]string{"django", "fastapi", "flask"}, framework)
+	default:
+		return false
 	}
 }

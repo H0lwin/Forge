@@ -38,6 +38,7 @@ func newAddCmd(d *rootDeps) *cobra.Command {
 					huh.NewOption("ci", "ci"),
 					huh.NewOption("sentry", "sentry"),
 					huh.NewOption("pytest", "pytest"),
+					huh.NewOption("precommit", "precommit"),
 				}
 				if err := huh.NewForm(
 					huh.NewGroup(
@@ -54,6 +55,9 @@ func newAddCmd(d *rootDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if !app.AddonSupported(framework, addon) {
+				return fmt.Errorf("addon %q is not supported for detected framework %q", addon, framework)
+			}
 			if err := d.services.FS.WriteFile(filepath.Join(path, rel), []byte(content), 0o644); err != nil {
 				return err
 			}
@@ -61,7 +65,7 @@ func newAddCmd(d *rootDeps) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&addon, "feature", "", "feature to add: auth|celery|cache|email|docker|ci|sentry|pytest")
+	cmd.Flags().StringVar(&addon, "feature", "", "feature to add: auth|celery|cache|email|docker|ci|sentry|pytest|precommit")
 	cmd.Flags().StringVar(&addon, "addon", "", "alias for --feature")
 	cmd.Flags().StringVar(&path, "path", ".", "project path")
 	cmd.Flags().BoolVar(&noInteractive, "no-interactive", false, "disable prompts")

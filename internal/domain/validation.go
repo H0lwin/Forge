@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -22,7 +23,15 @@ func ResolveProjectPath(basePath, name string) (string, error) {
 		return "", fmt.Errorf("%w: --path is required", ErrValidation)
 	}
 	path := filepath.Join(basePath, name)
-	return filepath.Clean(path), nil
+	path = filepath.Clean(path)
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		entries, readErr := os.ReadDir(path)
+		if readErr == nil && len(entries) > 0 {
+			return "", fmt.Errorf("%w: target path already exists and is not empty: %s", ErrValidation, path)
+		}
+	}
+	return path, nil
 }
 
 func RequiresPythonVersion(f Framework) bool {
@@ -48,6 +57,14 @@ func ValidateFrameworkExtras(f Framework, extras []string) error {
 			if !slices.Contains([]Framework{FrameworkNext, FrameworkVite}, f) {
 				return fmt.Errorf("%w: extra %q is only supported for frontend frameworks", ErrValidation, ex)
 			}
+		case "postgres":
+			if !slices.Contains([]Framework{FrameworkDjango, FrameworkFastAPI, FrameworkFlask}, f) {
+				return fmt.Errorf("%w: extra %q is only supported for python backends", ErrValidation, ex)
+			}
+		case "precommit", "sentry", "pytest", "docker", "ci", "git":
+			// Supported for all implemented frameworks.
+		default:
+			return fmt.Errorf("%w: unsupported extra %q", ErrValidation, ex)
 		}
 	}
 	return nil

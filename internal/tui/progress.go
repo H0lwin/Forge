@@ -3,36 +3,23 @@ package tui
 import (
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"forge/internal/runner"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
-type progressModel struct {
-	event runner.Event
-}
-
-var _ tea.Model = progressModel{}
-
-func (m progressModel) Init() tea.Cmd { return nil }
-func (m progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch v := msg.(type) {
-	case runner.Event:
-		m.event = v
-	}
-	return m, nil
-}
-func (m progressModel) View() string {
-	if m.event.Total == 0 {
-		return ""
-	}
-	return fmt.Sprintf("[%d/%d] %s", m.event.Index, m.event.Total, m.event.Title)
-}
-
 func NewProgressObserver(w io.Writer) (func(runner.Event), func()) {
+	started := time.Now()
 	observe := func(e runner.Event) {
-		fmt.Fprintf(w, "%s [%d/%d] %s\n", symbol(e.Type), e.Index, e.Total, e.Title)
+		sym := symbol(e.Type)
+		bar := progressBar(e.Index, e.Total, 20)
+		pct := progressPercent(e.Index, e.Total)
+		fmt.Fprintf(w, "%s [%2d/%2d] %3d%% %s %s", sym, e.Index, e.Total, pct, bar, e.Title)
+		if e.Type == runner.EventDone || e.Type == runner.EventFailed {
+			fmt.Fprintf(w, "  (%s)", time.Since(started).Round(time.Second))
+		}
+		fmt.Fprintln(w)
 		if e.Err != nil {
 			fmt.Fprintf(w, "    error: %v\n", e.Err)
 		}
@@ -43,7 +30,7 @@ func NewProgressObserver(w io.Writer) (func(runner.Event), func()) {
 func symbol(t runner.EventType) string {
 	switch t {
 	case runner.EventStarted:
-		return "*"
+		return ">"
 	case runner.EventDone:
 		return "+"
 	case runner.EventSkipped:
@@ -53,4 +40,35 @@ func symbol(t runner.EventType) string {
 	default:
 		return "."
 	}
+}
+
+func progressPercent(index, total int) int {
+	if total <= 0 {
+		return 0
+	}
+	p := int(float64(index) / float64(total) * 100.0)
+	if p > 100 {
+		return 100
+	}
+	if p < 0 {
+		return 0
+	}
+	return p
+}
+
+func progressBar(index, total, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if total <= 0 {
+		return "[" + strings.Repeat("-", width) + "]"
+	}
+	filled := int(float64(index) / float64(total) * float64(width))
+	if filled > width {
+		filled = width
+	}
+	if filled < 0 {
+		filled = 0
+	}
+	return "[" + strings.Repeat("#", filled) + strings.Repeat("-", width-filled) + "]"
 }

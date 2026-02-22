@@ -19,6 +19,7 @@ go build -o bin/forge.exe ./
 ```bash
 ./bin/forge
 ./bin/forge new
+./bin/forge frameworks
 ./bin/forge doctor
 ```
 
@@ -36,6 +37,19 @@ go build -o bin/forge.exe ./
 
 ./bin/forge new --name my-app --framework next --path . --extras docker --no-interactive --dry-run
 ```
+
+## Interactive flow
+
+```bash
+./bin/forge new
+```
+
+The wizard guides you through:
+- project category
+- framework selection
+- project details
+- python environment options (when required)
+- extras selection
 
 ## Test
 

@@ -144,13 +144,13 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 		return nil, err
 	}
 	if contains(req.Extras, "ci") {
-		steps = append(steps, runner.Step{ID: "ci", Title: "Creating GitHub Actions workflow", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "ci", Title: "Creating GitHub Actions workflow", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			workflow := "name: ci\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
 			return s.FS.WriteFile(filepath.Join(req.ProjectPath, ".github/workflows/ci.yml"), []byte(workflow), 0o644)
 		}})
 	}
 	if contains(req.Extras, "drf") {
-		steps = append(steps, runner.Step{ID: "drf", Title: "Adding Django REST Framework", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "drf", Title: "Adding Django REST Framework", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			p := filepath.Join(req.ProjectPath, "requirements.txt")
 			b, err := appendLineIfMissing(p, "djangorestframework")
 			if err != nil {
@@ -160,7 +160,7 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 		}})
 	}
 	if contains(req.Extras, "postgres") {
-		steps = append(steps, runner.Step{ID: "postgres", Title: "Configuring PostgreSQL defaults", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "postgres", Title: "Configuring PostgreSQL defaults", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			envPath := filepath.Join(req.ProjectPath, ".env.example")
 			b, err := appendMultiIfMissing(envPath, []string{
 				"DB_ENGINE=postgres",
@@ -176,8 +176,38 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 			return s.FS.WriteFile(envPath, b, 0o644)
 		}})
 	}
+	if contains(req.Extras, "celery") {
+		steps = append(steps, runner.Step{ID: "celery", Title: "Adding Celery integration scaffold", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
+			readme := "Celery Integration\n\n1. Install celery and redis client\n2. Configure broker URL\n3. Run worker: celery -A <app> worker -l info\n"
+			if err := s.FS.WriteFile(filepath.Join(req.ProjectPath, "CELERY.md"), []byte(readme), 0o644); err != nil {
+				return err
+			}
+			if domain.RequiresPythonVersion(req.Framework) {
+				p := filepath.Join(req.ProjectPath, "requirements.txt")
+				b, err := appendMultiIfMissing(p, []string{"celery", "redis"})
+				if err != nil {
+					return err
+				}
+				return s.FS.WriteFile(p, b, 0o644)
+			}
+			return nil
+		}})
+	}
+	if contains(req.Extras, "tailwind") {
+		steps = append(steps, runner.Step{ID: "tailwind", Title: "Adding Tailwind starter config", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
+			if req.Framework != domain.FrameworkNext && req.Framework != domain.FrameworkVite {
+				return fmt.Errorf("tailwind is only available for next/vite")
+			}
+			config := "/** @type {import('tailwindcss').Config} */\nmodule.exports = {\n  content: [\"./app/**/*.{js,ts,jsx,tsx}\", \"./src/**/*.{js,ts,jsx,tsx}\"],\n  theme: { extend: {} },\n  plugins: [],\n}\n"
+			css := "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n"
+			if err := s.FS.WriteFile(filepath.Join(req.ProjectPath, "tailwind.config.cjs"), []byte(config), 0o644); err != nil {
+				return err
+			}
+			return s.FS.WriteFile(filepath.Join(req.ProjectPath, "tailwind.css"), []byte(css), 0o644)
+		}})
+	}
 	if contains(req.Extras, "pytest") {
-		steps = append(steps, runner.Step{ID: "pytest", Title: "Adding pytest setup", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "pytest", Title: "Adding pytest setup", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			if err := s.FS.WriteFile(filepath.Join(req.ProjectPath, "pytest.ini"), []byte("[pytest]\naddopts = -q\n"), 0o644); err != nil {
 				return err
 			}
@@ -185,18 +215,18 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 		}})
 	}
 	if contains(req.Extras, "precommit") {
-		steps = append(steps, runner.Step{ID: "precommit", Title: "Adding pre-commit config", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "precommit", Title: "Adding pre-commit config", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			cfg := "repos:\n  - repo: https://github.com/pre-commit/pre-commit-hooks\n    rev: v4.6.0\n    hooks:\n      - id: end-of-file-fixer\n      - id: trailing-whitespace\n"
 			return s.FS.WriteFile(filepath.Join(req.ProjectPath, ".pre-commit-config.yaml"), []byte(cfg), 0o644)
 		}})
 	}
 	if contains(req.Extras, "sentry") {
-		steps = append(steps, runner.Step{ID: "sentry", Title: "Adding Sentry config notes", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "sentry", Title: "Adding Sentry config notes", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			return s.FS.WriteFile(filepath.Join(req.ProjectPath, "SENTRY.md"), []byte("Set SENTRY_DSN in .env and initialize SDK in app startup.\n"), 0o644)
 		}})
 	}
 	if contains(req.Extras, "docker") {
-		steps = append(steps, runner.Step{ID: "docker", Title: "Setting up Docker", Timeout: 5 * time.Second, Action: func(context.Context) error {
+		steps = append(steps, runner.Step{ID: "docker", Title: "Setting up Docker", Timeout: 5 * time.Second, Policy: runner.FailSkippable, Action: func(context.Context) error {
 			dockerfile := "FROM alpine:3.20\nCMD [\"sh\",\"-c\",\"echo forge scaffold\"]\n"
 			compose := "services:\n  app:\n    build: .\n"
 			if err := s.FS.WriteFile(filepath.Join(req.ProjectPath, "Dockerfile"), []byte(dockerfile), 0o644); err != nil {
@@ -206,7 +236,7 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 		}})
 	}
 	if contains(req.Extras, "git") || s.Config.Defaults.GitInit {
-		steps = append(steps, runner.CommandStep(
+		step := runner.CommandStep(
 			s.Executor,
 			system.Command{Name: "git", Args: []string{"init"}, Dir: req.ProjectPath, Stdout: cmdOut, Stderr: cmdOut},
 			"git-init",
@@ -214,7 +244,9 @@ func (s *Services) extraSteps(req domain.GenerateRequest, out io.Writer) ([]runn
 			15*time.Second,
 			0,
 			"git init",
-		))
+		)
+		step.Policy = runner.FailSkippable
+		steps = append(steps, step)
 	}
 	return steps, nil
 }

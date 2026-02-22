@@ -96,6 +96,9 @@ func (r Runner) Run(ctx context.Context, steps []Step) error {
 			}
 			switch decision {
 			case "skip":
+				if step.Policy != FailSkippable {
+					return fmt.Errorf("step %s is not skippable: %w", step.ID, lastErr)
+				}
 				r.emit(Event{Type: EventSkipped, Index: idx + 1, Total: len(steps), StepID: step.ID, Title: step.Title})
 				continue
 			case "retry":

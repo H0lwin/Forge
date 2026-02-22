@@ -41,13 +41,7 @@ func NewRootCommand(ctx context.Context, stdout, stderr io.Writer) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(stdout, cli.Banner(version))
 			fmt.Fprintln(stdout)
-			fmt.Fprintln(stdout, "Available Commands:")
-			fmt.Fprintln(stdout, "  - new        Create a new project interactively")
-			fmt.Fprintln(stdout, "  - add        Add a feature to existing project")
-			fmt.Fprintln(stdout, "  - doctor     Check your development environment")
-			fmt.Fprintln(stdout, "  - config     Manage forge settings")
-			fmt.Fprintln(stdout, "  - templates  Browse and manage project templates")
-			fmt.Fprintln(stdout, "  - version    Show version info")
+			fmt.Fprintln(stdout, cli.CommandMenu())
 			fmt.Fprintln(stdout)
 			fmt.Fprintln(stdout, "Run 'forge new' to get started")
 			_ = cmd
@@ -70,7 +64,7 @@ func NewRootCommand(ctx context.Context, stdout, stderr io.Writer) *cobra.Comman
 		d.services = s
 		return nil
 	}
-	root.AddCommand(newNewCmd(d), newDoctorCmd(d), newAddCmd(d), newConfigCmd(d), newTemplatesCmd(d), newVersionCmd(stdout))
+	root.AddCommand(newNewCmd(d), newDoctorCmd(d), newAddCmd(d), newConfigCmd(d), newTemplatesCmd(d), newFrameworksCmd(d), newVersionCmd(stdout))
 	return root
 }
 
