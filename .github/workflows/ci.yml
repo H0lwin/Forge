@@ -1,0 +1,49 @@
+name: Go CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install the requested Go toolchain (official action)
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      # Ensure module metadata is clean and reproducible
+      - name: Tidy modules
+        run: go mod tidy
+
+      # Download all module dependencies explicitly
+      - name: Download dependencies
+        run: go mod download
+
+      # Build the project binary into a dedicated output directory
+      - name: Build project
+        run: |
+          mkdir -p bin
+          go build -v -o bin/forge ./
+
+      # Upload build output as a GitHub Actions artifact
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-build
+          path: bin/forge
+          if-no-files-found: error
