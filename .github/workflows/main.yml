@@ -40,10 +40,25 @@ jobs:
           mkdir -p bin
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -v -o bin/forge.exe ./
 
-      # Upload Windows executable as build artifact
+      # Create a Windows launcher so users can double-click and keep a terminal open
+      - name: Create Windows launcher
+        run: |
+          cat > bin/run-forge.bat << 'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Starting forge...
+          echo.
+          forge.exe
+          echo.
+          pause
+          EOF
+
+      # Upload build outputs as artifact
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: forge-windows-exe
-          path: bin/forge.exe
+          path: |
+            bin/forge.exe
+            bin/run-forge.bat
           if-no-files-found: error
