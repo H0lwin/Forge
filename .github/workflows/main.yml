@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build
+    name: Build Windows EXE on Ubuntu
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Install the requested Go toolchain (official action)
+      # Install Go toolchain using official action
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -34,16 +34,16 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      # Build the project binary into a dedicated output directory
-      - name: Build project
+      # Cross-compile Windows executable (.exe) while running on Ubuntu
+      - name: Build Windows executable
         run: |
           mkdir -p bin
-          go build -v -o bin/forge ./
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -v -o bin/forge.exe ./
 
-      # Upload build output as a GitHub Actions artifact
+      # Upload Windows executable as build artifact
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: forge-build
-          path: bin/forge
+          name: forge-windows-exe
+          path: bin/forge.exe
           if-no-files-found: error
