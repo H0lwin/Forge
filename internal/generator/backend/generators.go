@@ -9,14 +9,17 @@ func Django(fs system.FileSystem, ex system.Executor) generator.Generator {
 	b := generator.NewGenericBuilder(fs, ex)
 	return b.New(baseSpec("django", map[string]string{
 		"manage.py":               "#!/usr/bin/env python\nimport os\nimport sys\n\nif __name__ == '__main__':\n    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.dev')\n    from django.core.management import execute_from_command_line\n    execute_from_command_line(sys.argv)\n",
-		"config/settings/base.py": "SECRET_KEY = 'change-me'\nDEBUG = False\nALLOWED_HOSTS = ['*']\nINSTALLED_APPS = []\nMIDDLEWARE = []\nROOT_URLCONF = 'config.urls'\n",
+		"config/settings/base.py": "import os\nfrom pathlib import Path\nimport environ\n\nenv = environ.Env(DEBUG=(bool, False))\nBASE_DIR = Path(__file__).resolve().parent.parent.parent\nenviron.Env.read_env(os.path.join(BASE_DIR, '.env'))\n\nSECRET_KEY = env('SECRET_KEY', default='change-me')\nDEBUG = env('DEBUG')\nALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])\n\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',\n    'apps.core',\n]\n\nMIDDLEWARE = [\n    'django.middleware.security.SecurityMiddleware',\n    'django.contrib.sessions.middleware.SessionMiddleware',\n    'django.middleware.common.CommonMiddleware',\n    'django.middleware.csrf.CsrfViewMiddleware',\n    'django.contrib.auth.middleware.AuthenticationMiddleware',\n    'django.contrib.messages.middleware.MessageMiddleware',\n    'django.middleware.clickjacking.XFrameOptionsMiddleware', \n]\n\nROOT_URLCONF = 'config.urls'\n\nTEMPLATES = [{\n    'BACKEND': 'django.template.backends.django.DjangoTemplates',\n    'DIRS': [BASE_DIR / 'templates'],\n    'APP_DIRS': True,\n    'OPTIONS': {\n        'context_processors': [\n            'django.template.context_processors.debug',\n            'django.template.context_processors.request',\n            'django.contrib.auth.context_processors.auth',\n            'django.contrib.messages.context_processors.messages',\n        ],\n    },\n}]\n\nWSGI_APPLICATION = 'config.wsgi.application'\n\nDATABASES = {\n    'default': env.db('DATABASE_URL', default=f'sqlite:///{BASE_DIR}/db.sqlite3')\n}\n\nSTATIC_URL = 'static/'\nSTATIC_ROOT = BASE_DIR / 'staticfiles'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n",
 		"config/settings/dev.py":  "from .base import *\nDEBUG = True\n",
-		"config/settings/prod.py": "from .base import *\n",
-		"config/urls.py":          "from django.urls import path\nurlpatterns = []\n",
+		"config/settings/prod.py": "from .base import *\nDEBUG = False\n",
+		"config/urls.py":          "from django.contrib import admin\nfrom django.urls import path\n\nurlpatterns = [\n    path('office/', admin.site.urls),\n]\n",
 		"config/wsgi.py":          "import os\nfrom django.core.wsgi import get_wsgi_application\nos.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.prod')\napplication = get_wsgi_application()\n",
 		"apps/core/__init__.py":   "",
-		"requirements.txt":        "Django>=5.0\n",
-		".gitignore":              ".venv/\n__pycache__/\n.env\n",
+		"templates/.gitkeep":      "",
+		"static/.gitkeep":         "",
+		"requirements.txt":        "Django>=5.0\ndjango-environ>=0.11.2\n",
+		".gitignore":              ".venv/\n__pycache__/\n.env\ndb.sqlite3\nstaticfiles/\n",
+		".env":                    "DEBUG=True\nSECRET_KEY=dev-secret-key-123\nALLOWED_HOSTS=*\n",
 	}, []string{"python manage.py runserver"}))
 }
 
